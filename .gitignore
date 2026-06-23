@@ -9,3 +9,5 @@ public/mediapipe/
 
 # Local Netlify folder
 .netlify
+
+.claude

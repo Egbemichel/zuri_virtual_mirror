@@ -67,11 +67,15 @@ body {
 
 /* ── App shell: spacious two-column grid (mirror | panel) ──────────────────── */
 #app {
-  height: 100vh;
+  height: 100dvh; /* dvh: account for mobile browser chrome */
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(380px, 0.6fr);
   gap: var(--space);
-  padding: var(--space);
+  /* Respect notches / home indicators on phones. */
+  padding: max(var(--space), env(safe-area-inset-top))
+    max(var(--space), env(safe-area-inset-right))
+    max(var(--space), env(safe-area-inset-bottom))
+    max(var(--space), env(safe-area-inset-left));
 }
 
 /* ── Camera stage ──────────────────────────────────────────────────────────── */
@@ -136,14 +140,20 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 0.7rem;
+  max-width: min(28rem, calc(100% - 3rem));
   padding: 0.7rem 1.2rem;
   font-size: 0.85rem;
+  line-height: 1.35;
   letter-spacing: 0.02em;
   color: var(--bone);
   background: rgba(20, 16, 14, 0.6);
   backdrop-filter: blur(14px);
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: 18px; /* softer than a pure pill so wrapped text reads well */
+}
+
+.stage__dot {
+  flex: 0 0 auto;
 }
 
 .stage__dot {
@@ -187,6 +197,10 @@ body {
 }
 
 .control {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px; /* touch-target-size */
   font-family: var(--font-ui);
   font-size: 0.92rem;
   letter-spacing: 0.04em;
@@ -197,16 +211,30 @@ body {
   color: var(--bone);
   background: rgba(20, 16, 14, 0.55);
   backdrop-filter: blur(14px);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
   transition: transform 0.2s ease, background 0.25s ease, opacity 0.25s ease;
 }
 
-.control:hover:not(:disabled) {
-  transform: translateY(-2px);
+@media (hover: hover) {
+  .control:hover:not(:disabled) {
+    transform: translateY(-2px);
+  }
+}
+
+/* Tactile press feedback on touch (replaces hover on phones). */
+.control:active:not(:disabled) {
+  transform: scale(0.97);
 }
 
 .control:disabled {
   opacity: 0.55;
   cursor: default;
+}
+
+.control:focus-visible {
+  outline: 2px solid var(--accent-coral);
+  outline-offset: 3px;
 }
 
 .control--primary {
@@ -288,6 +316,7 @@ body {
   display: flex;
   align-items: center;
   gap: 1.1rem;
+  min-height: 44px; /* touch-target-size */
   padding: 1.15rem 1.25rem;
   background: rgba(246, 241, 236, 0.03);
   border: 1px solid var(--line);
@@ -295,13 +324,29 @@ body {
   cursor: pointer;
   text-align: left;
   color: inherit;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
   transition: transform 0.25s ease, border-color 0.25s ease, background 0.25s ease;
 }
 
-.combo-card:hover {
-  transform: translateY(-3px);
-  background: rgba(246, 241, 236, 0.06);
-  border-color: rgba(249, 173, 153, 0.35);
+@media (hover: hover) {
+  .combo-card:hover {
+    transform: translateY(-3px);
+    background: rgba(246, 241, 236, 0.06);
+    border-color: rgba(249, 173, 153, 0.35);
+  }
+  .combo-card:hover .combo-card__swatch {
+    transform: scale(1.06);
+  }
+}
+
+.combo-card:active {
+  transform: scale(0.99);
+}
+
+.combo-card:focus-visible {
+  outline: 2px solid var(--accent-coral);
+  outline-offset: 3px;
 }
 
 .combo-card--active {
@@ -316,10 +361,6 @@ body {
   border-radius: 50%;
   border: 2px solid;
   transition: transform 0.25s ease;
-}
-
-.combo-card:hover .combo-card__swatch {
-  transform: scale(1.06);
 }
 
 .combo-card__meta {
@@ -372,23 +413,32 @@ body {
 
 .custom-field input[type='color'] {
   width: 100%;
-  height: 46px;
+  height: 48px; /* ≥44px touch target */
   padding: 0;
   border: 1px solid var(--line);
   border-radius: 12px;
   background: transparent;
   cursor: pointer;
+  touch-action: manipulation;
 }
 
 .custom-field input[type='range'] {
   width: 100%;
+  min-height: 44px; /* comfortable touch slider */
   accent-color: var(--accent-coral);
   cursor: pointer;
+  touch-action: manipulation;
+}
+
+.custom-field input:focus-visible {
+  outline: 2px solid var(--accent-coral);
+  outline-offset: 3px;
 }
 
 .custom-add {
   grid-column: 1 / -1;
   margin-top: 0.3rem;
+  min-height: 44px; /* touch-target-size */
   font-family: var(--font-ui);
   font-size: 0.9rem;
   letter-spacing: 0.03em;
@@ -398,76 +448,25 @@ body {
   background: rgba(249, 173, 153, 0.08);
   color: var(--bone);
   cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
   transition: background 0.25s ease, transform 0.2s ease;
 }
 
-.custom-add:hover {
-  transform: translateY(-2px);
-  background: rgba(249, 173, 153, 0.16);
+@media (hover: hover) {
+  .custom-add:hover {
+    transform: translateY(-2px);
+    background: rgba(249, 173, 153, 0.16);
+  }
 }
 
-/* ── Clear Gloss switch ────────────────────────────────────────────────────── */
-.gloss-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1.5rem;
-  padding: 1.4rem 1.5rem;
-  border: 1px solid var(--line);
-  border-radius: 18px;
-  background: linear-gradient(
-    120deg,
-    rgba(230, 140, 88, 0.08),
-    rgba(249, 173, 153, 0.04)
-  );
+.custom-add:active {
+  transform: scale(0.98);
 }
 
-.gloss-toggle__label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-
-.gloss-toggle__name {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 1.05rem;
-}
-
-.gloss-toggle__hint {
-  font-size: 0.8rem;
-  color: var(--bone-dim);
-}
-
-.switch {
-  flex: 0 0 auto;
-  width: 60px;
-  height: 32px;
-  border-radius: 999px;
-  border: 1px solid var(--line);
-  background: rgba(0, 0, 0, 0.35);
-  cursor: pointer;
-  position: relative;
-  transition: background 0.3s ease;
-}
-
-.switch__thumb {
-  position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: var(--bone);
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.switch--on {
-  background: linear-gradient(120deg, var(--accent-amber), var(--accent-coral));
-}
-
-.switch--on .switch__thumb {
-  transform: translateX(28px);
+.custom-add:focus-visible {
+  outline: 2px solid var(--accent-coral);
+  outline-offset: 3px;
 }
 
 .panel__footer {
@@ -482,12 +481,50 @@ body {
 @media (max-width: 940px) {
   #app {
     grid-template-columns: 1fr;
-    grid-template-rows: 50vh 1fr;
+    grid-template-rows: 52dvh 1fr;
     height: auto;
-    min-height: 100vh;
+    min-height: 100dvh;
     overflow-y: auto;
+    gap: clamp(1rem, 4vw, 1.75rem);
   }
   body {
     overflow: auto;
+  }
+
+  /* On phones the lighting coach reads as a top banner so it never collides
+     with the bottom Capture/Download controls. */
+  .stage__status {
+    left: 1rem;
+    right: 1rem;
+    top: 1rem;
+    bottom: auto;
+    max-width: none;
+  }
+
+  /* Keep primary actions clear of the home indicator / gesture bar. */
+  .stage__controls {
+    left: 1rem;
+    right: 1rem;
+    bottom: calc(1rem + env(safe-area-inset-bottom));
+    transform: none;
+    justify-content: center;
+  }
+
+  /* Full-width, thumb-friendly buttons that still feel composed. */
+  .control {
+    flex: 1 1 0;
+    max-width: 15rem;
+  }
+}
+
+/* ── Respect users who prefer reduced motion (accessibility) ───────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
