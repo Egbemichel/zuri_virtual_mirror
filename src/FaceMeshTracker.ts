@@ -35,8 +35,10 @@ export class FaceMeshDetector {
     this.faceMesh.setOptions({
       maxNumFaces: 1,
       refineLandmarks: true, // 478-point mesh — tight lip contours
-      minDetectionConfidence: 0.5,
-      minTrackingConfidence: 0.5,
+      // Single-image detection is harder than video (no temporal tracking), so
+      // we lower the bar; the App retries on fresh frames if a shot still misses.
+      minDetectionConfidence: 0.3,
+      minTrackingConfidence: 0.3,
       selfieMode: false, // the captured still is already mirrored
     });
 

@@ -1,9 +1,8 @@
 /* ───────────────────────────────────────────────────────────────────────────
-   Zuri Virtual Mirror — "Quiet Luxury" design system.
-   Spacious grid, generous padding, restrained palette, elegant type.
+   Zuri Virtual Mirror — "Quiet Luxury", minimal & cute.
+   Full-screen camera hero; controls float as light glass overlays.
    ─────────────────────────────────────────────────────────────────────────── */
 
-/* ── Brand typefaces (licensed, served from /public/fonts) ─────────────────── */
 @font-face {
   font-family: 'Rische';
   src: url('/fonts/Rische-Bold.woff2') format('woff2');
@@ -24,24 +23,22 @@
 }
 
 :root {
-  /* Brand accents */
   --accent-coral: #f9ad99;
   --accent-amber: #e68c58;
 
-  /* Quiet-luxury neutrals */
   --ink: #1a1614;
   --ink-soft: #2a2421;
   --bone: #f6f1ec;
   --bone-dim: #cdbfb3;
-  --line: rgba(246, 241, 236, 0.12);
+  --line: rgba(246, 241, 236, 0.14);
+  --glass: rgba(20, 16, 14, 0.55);
 
-  /* Type stacks (brand face → web-safe fallback) */
   --font-display: 'Rische', 'Plus Jakarta Sans', serif;
   --font-ui: 'IsidoraSans', 'Plus Jakarta Sans', system-ui, sans-serif;
 
-  /* Rhythm */
-  --space: clamp(1.5rem, 3vw, 3rem);
   --radius: 22px;
+  --safe-top: env(safe-area-inset-top);
+  --safe-bottom: env(safe-area-inset-bottom);
 }
 
 * {
@@ -58,35 +55,36 @@ body {
 body {
   font-family: var(--font-ui);
   color: var(--bone);
-  background:
-    radial-gradient(120% 120% at 80% 0%, #2a2018 0%, var(--ink) 55%) fixed;
+  background: var(--ink);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   overflow: hidden;
+  overscroll-behavior: none;
 }
 
-/* ── App shell: spacious two-column grid (mirror | panel) ──────────────────── */
-#app {
-  height: 100dvh; /* dvh: account for mobile browser chrome */
-  display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(380px, 0.6fr);
-  gap: var(--space);
-  /* Respect notches / home indicators on phones. */
-  padding: max(var(--space), env(safe-area-inset-top))
-    max(var(--space), env(safe-area-inset-right))
-    max(var(--space), env(safe-area-inset-bottom))
-    max(var(--space), env(safe-area-inset-left));
+/* Shared touch ergonomics for every interactive control. */
+.iconbtn,
+.swatch,
+.control,
+.shutter,
+.custom-add,
+.custom-field input {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
-/* ── Camera stage ──────────────────────────────────────────────────────────── */
+/* ── App shell = full-screen camera ────────────────────────────────────────── */
+#app,
 .stage {
-  position: relative;
-  border-radius: var(--radius);
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100dvh;
   overflow: hidden;
+}
+
+.stage {
   background: #000;
-  box-shadow:
-    0 40px 120px rgba(0, 0, 0, 0.55),
-    inset 0 0 0 1px var(--line);
 }
 
 .stage video,
@@ -96,21 +94,19 @@ body {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: opacity 0.4s ease;
+  transition: opacity 0.45s ease;
 }
 
-/* Mirror the live preview like a real looking-glass. The captured still is
-   mirrored to match, so the rendered result needs no extra flip. */
+/* Mirror the live preview; the captured still is mirrored to match. */
 .stage video {
   transform: scaleX(-1);
 }
 
 .stage canvas {
   pointer-events: none;
-  opacity: 0; /* transparent in preview so the live feed shows through */
+  opacity: 0;
 }
 
-/* Mode switching: live feed while framing, rendered result after capture. */
 .stage[data-mode='result'] canvas {
   opacity: 1;
 }
@@ -118,8 +114,7 @@ body {
   opacity: 0;
 }
 .stage[data-mode='processing'] video {
-  opacity: 0.45;
-  filter: blur(2px);
+  opacity: 0.5;
 }
 
 .stage__vignette {
@@ -127,36 +122,69 @@ body {
   inset: 0;
   pointer-events: none;
   background: radial-gradient(
-    120% 100% at 50% 50%,
-    transparent 55%,
-    rgba(0, 0, 0, 0.45) 100%
+    130% 100% at 50% 45%,
+    transparent 58%,
+    rgba(0, 0, 0, 0.4) 100%
   );
 }
 
-.stage__status {
+/* ── Top HUD: brand + lighting coach ───────────────────────────────────────── */
+.hud--top {
   position: absolute;
-  left: 1.5rem;
-  bottom: 1.5rem;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 3;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: calc(1rem + var(--safe-top)) 1.1rem 2.5rem;
+  background: linear-gradient(rgba(16, 12, 10, 0.5), transparent);
+  pointer-events: none;
+}
+
+.brand {
   display: inline-flex;
   align-items: center;
-  gap: 0.7rem;
-  max-width: min(28rem, calc(100% - 3rem));
-  padding: 0.7rem 1.2rem;
-  font-size: 0.85rem;
-  line-height: 1.35;
-  letter-spacing: 0.02em;
+  gap: 0.5rem;
+  pointer-events: auto;
+}
+
+.brand__mark {
+  width: 26px;
+  height: 26px;
+  color: var(--accent-coral);
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.4));
+}
+
+.brand__word {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.25rem;
+  letter-spacing: 0.01em;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+}
+
+.stage__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  max-width: min(20rem, 62vw);
+  padding: 0.6rem 0.95rem;
+  font-size: 0.82rem;
+  line-height: 1.3;
+  letter-spacing: 0.01em;
   color: var(--bone);
-  background: rgba(20, 16, 14, 0.6);
+  background: var(--glass);
   backdrop-filter: blur(14px);
   border: 1px solid var(--line);
-  border-radius: 18px; /* softer than a pure pill so wrapped text reads well */
+  border-radius: 16px;
+  pointer-events: auto;
 }
 
 .stage__dot {
   flex: 0 0 auto;
-}
-
-.stage__dot {
   width: 9px;
   height: 9px;
   border-radius: 50%;
@@ -169,218 +197,287 @@ body {
   background: #6ee7a0;
   box-shadow: 0 0 0 4px rgba(110, 231, 160, 0.2);
 }
-
 .stage__status[data-light='dim'] .stage__dot,
 .stage__status[data-light='harsh'] .stage__dot {
   background: var(--accent-amber);
   box-shadow: 0 0 0 4px rgba(230, 140, 88, 0.22);
 }
-
 .stage__status[data-light='dark'] .stage__dot {
   background: #e0664a;
   box-shadow: 0 0 0 4px rgba(224, 102, 74, 0.22);
 }
-
 .stage__status--error {
   border-color: rgba(230, 140, 88, 0.5);
 }
 
-/* ── Capture / Retake / Download controls ──────────────────────────────────── */
-.stage__controls {
+/* ── Bottom dock: shade rail + actions ─────────────────────────────────────── */
+.dock {
   position: absolute;
-  left: 50%;
-  bottom: 1.75rem;
-  transform: translateX(-50%);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
   display: flex;
-  gap: 1rem;
-  z-index: 2;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 2.5rem 1rem calc(1.1rem + var(--safe-bottom));
+  background: linear-gradient(transparent, rgba(16, 12, 10, 0.62));
 }
 
+.rail__name {
+  min-height: 1.1em; /* reserve space → no layout shift when it changes */
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-size: 0.95rem;
+  letter-spacing: 0.06em;
+  color: var(--bone);
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.5);
+  text-align: center;
+}
+
+.rail {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  max-width: 100%;
+  padding: 0.35rem 0.5rem;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+.rail::-webkit-scrollbar {
+  display: none;
+}
+
+.swatch {
+  flex: 0 0 auto;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  scroll-snap-align: center;
+  position: relative;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease;
+}
+
+.swatch--active {
+  transform: scale(1.18);
+  border-color: var(--bone);
+  box-shadow: 0 0 0 3px var(--accent-coral), 0 6px 18px rgba(0, 0, 0, 0.45);
+}
+
+.swatch:focus-visible {
+  outline: 2px solid var(--accent-coral);
+  outline-offset: 4px;
+}
+
+/* The little "＋ create" chip lives at the end of the rail too on small screens,
+   but the primary custom entry is the dock icon button. */
+
+.dock__bar {
+  display: grid;
+  grid-template-columns: 48px 1fr 48px;
+  align-items: center;
+  width: 100%;
+  max-width: 26rem;
+}
+
+.iconbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--glass);
+  backdrop-filter: blur(14px);
+  color: var(--bone);
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.25s ease;
+}
+.iconbtn svg {
+  width: 22px;
+  height: 22px;
+}
+.iconbtn:active {
+  transform: scale(0.92);
+}
+.iconbtn:focus-visible {
+  outline: 2px solid var(--accent-coral);
+  outline-offset: 3px;
+}
+.iconbtn--spacer {
+  background: none;
+  border: none;
+  pointer-events: none;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8rem;
+}
+
+/* Round camera shutter (preview mode) — cute + minimal. */
+.shutter {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  background: linear-gradient(135deg, var(--accent-coral), var(--accent-amber));
+  box-shadow: 0 10px 30px rgba(230, 140, 88, 0.45);
+  transition: transform 0.2s ease, box-shadow 0.25s ease;
+}
+.shutter::after {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border-radius: 50%;
+  background: var(--bone);
+  box-shadow: inset 0 0 0 2px rgba(26, 22, 20, 0.15);
+  transition: inset 0.15s ease;
+}
+.shutter:active {
+  transform: scale(0.94);
+}
+.shutter:active::after {
+  inset: 8px;
+}
+.shutter:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.shutter:focus-visible {
+  outline: 3px solid var(--bone);
+  outline-offset: 4px;
+}
+
+/* Pill controls (result mode: Retake / Download). */
 .control {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 44px; /* touch-target-size */
+  min-height: 46px;
+  padding: 0.8rem 1.7rem;
   font-family: var(--font-ui);
   font-size: 0.92rem;
-  letter-spacing: 0.04em;
-  padding: 0.95rem 2.1rem;
+  letter-spacing: 0.03em;
   border-radius: 999px;
   border: 1px solid var(--line);
   cursor: pointer;
   color: var(--bone);
-  background: rgba(20, 16, 14, 0.55);
+  background: var(--glass);
   backdrop-filter: blur(14px);
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
   transition: transform 0.2s ease, background 0.25s ease, opacity 0.25s ease;
 }
-
-@media (hover: hover) {
-  .control:hover:not(:disabled) {
-    transform: translateY(-2px);
-  }
-}
-
-/* Tactile press feedback on touch (replaces hover on phones). */
-.control:active:not(:disabled) {
-  transform: scale(0.97);
-}
-
-.control:disabled {
-  opacity: 0.55;
-  cursor: default;
-}
-
-.control:focus-visible {
-  outline: 2px solid var(--accent-coral);
-  outline-offset: 3px;
-}
-
 .control--primary {
   border: none;
   color: var(--ink);
   font-weight: 600;
   background: linear-gradient(120deg, var(--accent-amber), var(--accent-coral));
-  box-shadow: 0 14px 36px rgba(230, 140, 88, 0.35);
+  box-shadow: 0 10px 28px rgba(230, 140, 88, 0.4);
 }
-
-.control--ghost {
-  background: rgba(20, 16, 14, 0.6);
+.control:active {
+  transform: scale(0.96);
 }
-
-.control--capture {
-  padding-left: 2.6rem;
-  padding-right: 2.6rem;
+.control:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
-
-/* ── Control panel ─────────────────────────────────────────────────────────── */
-.panel {
-  height: 100%;
-  overflow-y: auto;
-  padding: clamp(1.5rem, 2.5vw, 2.75rem);
-  display: flex;
-  flex-direction: column;
-  gap: clamp(1.75rem, 3vw, 2.75rem);
-  background: rgba(26, 22, 20, 0.55);
-  backdrop-filter: blur(20px);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  scrollbar-width: thin;
-  scrollbar-color: var(--bone-dim) transparent;
-}
-
-.panel__eyebrow {
-  font-size: 0.72rem;
-  letter-spacing: 0.32em;
-  text-transform: uppercase;
-  color: var(--accent-coral);
-  margin-bottom: 0.9rem;
-}
-
-.panel__title {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: clamp(2.4rem, 4vw, 3.4rem);
-  line-height: 1.02;
-  letter-spacing: -0.01em;
-}
-
-.panel__subtitle {
-  margin-top: 1rem;
-  max-width: 38ch;
-  color: var(--bone-dim);
-  font-size: 0.95rem;
-  line-height: 1.6;
-}
-
-.panel__section-title {
-  font-family: var(--font-display);
-  font-weight: 300;
-  font-size: 1.15rem;
-  letter-spacing: 0.04em;
-  color: var(--bone);
-  margin-bottom: 1.4rem;
-  padding-bottom: 0.8rem;
-  border-bottom: 1px solid var(--line);
-}
-
-/* ── Combo grid: spacious, web-adapted (not compressed mobile cards) ───────── */
-.combo-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: clamp(1.1rem, 2vw, 1.75rem);
-}
-
-.combo-card {
-  display: flex;
-  align-items: center;
-  gap: 1.1rem;
-  min-height: 44px; /* touch-target-size */
-  padding: 1.15rem 1.25rem;
-  background: rgba(246, 241, 236, 0.03);
-  border: 1px solid var(--line);
-  border-radius: 18px;
-  cursor: pointer;
-  text-align: left;
-  color: inherit;
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
-  transition: transform 0.25s ease, border-color 0.25s ease, background 0.25s ease;
-}
-
-@media (hover: hover) {
-  .combo-card:hover {
-    transform: translateY(-3px);
-    background: rgba(246, 241, 236, 0.06);
-    border-color: rgba(249, 173, 153, 0.35);
-  }
-  .combo-card:hover .combo-card__swatch {
-    transform: scale(1.06);
-  }
-}
-
-.combo-card:active {
-  transform: scale(0.99);
-}
-
-.combo-card:focus-visible {
+.control:focus-visible {
   outline: 2px solid var(--accent-coral);
   outline-offset: 3px;
 }
 
-.combo-card--active {
-  border-color: var(--accent-coral);
-  background: rgba(249, 173, 153, 0.08);
+/* ── Slide-up sheet: custom studio + brand info ("extra stuff") ─────────────── */
+.sheet {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+.sheet.is-open {
+  pointer-events: auto;
 }
 
-.combo-card__swatch {
-  flex: 0 0 auto;
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  border: 2px solid;
-  transition: transform 0.25s ease;
+.sheet__scrim {
+  position: absolute;
+  inset: 0;
+  border: none;
+  cursor: pointer;
+  background: rgba(10, 8, 7, 0);
+  transition: background 0.4s ease;
+}
+.sheet.is-open .sheet__scrim {
+  background: rgba(10, 8, 7, 0.55);
 }
 
-.combo-card__meta {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  min-width: 0;
+.sheet__card {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  transform: translateY(100%); /* GSAP animates this */
+  max-height: 82dvh;
+  overflow-y: auto;
+  padding: 0.8rem clamp(1.25rem, 5vw, 2rem) calc(1.5rem + var(--safe-bottom));
+  background: rgba(26, 22, 20, 0.96);
+  backdrop-filter: blur(24px);
+  border-top: 1px solid var(--line);
+  border-radius: 28px 28px 0 0;
+  box-shadow: 0 -20px 60px rgba(0, 0, 0, 0.5);
+  scrollbar-width: thin;
+  scrollbar-color: var(--bone-dim) transparent;
 }
 
-.combo-card__name {
+.sheet__handle {
+  width: 44px;
+  height: 4px;
+  margin: 0.2rem auto 1.4rem;
+  border-radius: 999px;
+  background: var(--bone-dim);
+  opacity: 0.5;
+}
+
+/* ── Sheet content (panel) ─────────────────────────────────────────────────── */
+.panel__eyebrow {
+  font-size: 0.7rem;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--accent-coral);
+  margin-bottom: 0.6rem;
+}
+.panel__title {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 1.02rem;
-  letter-spacing: 0.01em;
+  font-size: clamp(1.8rem, 6vw, 2.4rem);
+  line-height: 1.04;
 }
-
-.combo-card__tagline {
-  font-size: 0.8rem;
+.panel__subtitle {
+  margin-top: 0.7rem;
+  max-width: 42ch;
   color: var(--bone-dim);
-  line-height: 1.35;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+.panel__section {
+  margin-top: 2rem;
+}
+.panel__section-title {
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-size: 1.05rem;
+  letter-spacing: 0.05em;
+  margin-bottom: 1.1rem;
+  padding-bottom: 0.7rem;
+  border-bottom: 1px solid var(--line);
 }
 
 /* ── Custom shade studio ───────────────────────────────────────────────────── */
@@ -393,52 +490,43 @@ body {
   border-radius: 18px;
   background: rgba(246, 241, 236, 0.03);
 }
-
 .custom-field {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
 }
-
 .custom-field--wide {
   grid-column: 1 / -1;
 }
-
 .custom-field label {
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--bone-dim);
 }
-
 .custom-field input[type='color'] {
   width: 100%;
-  height: 48px; /* ≥44px touch target */
+  height: 48px;
   padding: 0;
   border: 1px solid var(--line);
   border-radius: 12px;
   background: transparent;
   cursor: pointer;
-  touch-action: manipulation;
 }
-
 .custom-field input[type='range'] {
   width: 100%;
-  min-height: 44px; /* comfortable touch slider */
+  min-height: 44px;
   accent-color: var(--accent-coral);
   cursor: pointer;
-  touch-action: manipulation;
 }
-
 .custom-field input:focus-visible {
   outline: 2px solid var(--accent-coral);
   outline-offset: 3px;
 }
-
 .custom-add {
   grid-column: 1 / -1;
   margin-top: 0.3rem;
-  min-height: 44px; /* touch-target-size */
+  min-height: 46px;
   font-family: var(--font-ui);
   font-size: 0.9rem;
   letter-spacing: 0.03em;
@@ -448,76 +536,73 @@ body {
   background: rgba(249, 173, 153, 0.08);
   color: var(--bone);
   cursor: pointer;
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
   transition: background 0.25s ease, transform 0.2s ease;
 }
-
-@media (hover: hover) {
-  .custom-add:hover {
-    transform: translateY(-2px);
-    background: rgba(249, 173, 153, 0.16);
-  }
-}
-
 .custom-add:active {
   transform: scale(0.98);
 }
-
 .custom-add:focus-visible {
   outline: 2px solid var(--accent-coral);
   outline-offset: 3px;
 }
 
 .panel__footer {
-  margin-top: auto;
-  padding-top: 1.5rem;
-  font-size: 0.75rem;
+  margin-top: 2rem;
+  padding-top: 1.3rem;
+  font-size: 0.74rem;
   color: var(--bone-dim);
   border-top: 1px solid var(--line);
 }
 
-/* ── Responsive: stack the mirror over the panel on narrow viewports ───────── */
-@media (max-width: 940px) {
-  #app {
-    grid-template-columns: 1fr;
-    grid-template-rows: 52dvh 1fr;
-    height: auto;
-    min-height: 100dvh;
-    overflow-y: auto;
-    gap: clamp(1rem, 4vw, 1.75rem);
-  }
-  body {
-    overflow: auto;
-  }
+/* ── Minimal loading overlay ───────────────────────────────────────────────── */
+.loader {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  background: var(--ink);
+  transition: opacity 0.5s ease, visibility 0.5s ease;
+}
+.loader.is-hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.loader__mark {
+  width: 132px;
+  height: auto;
+  color: var(--accent-coral);
+}
+.loader__label {
+  font-size: 0.82rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--bone-dim);
+}
 
-  /* On phones the lighting coach reads as a top banner so it never collides
-     with the bottom Capture/Download controls. */
-  .stage__status {
-    left: 1rem;
-    right: 1rem;
-    top: 1rem;
-    bottom: auto;
-    max-width: none;
+/* Desktop refinement: keep the experience composed, not stretched edge-to-edge. */
+@media (hover: hover) and (min-width: 900px) {
+  .iconbtn:hover {
+    background: rgba(40, 32, 28, 0.7);
   }
-
-  /* Keep primary actions clear of the home indicator / gesture bar. */
-  .stage__controls {
-    left: 1rem;
-    right: 1rem;
-    bottom: calc(1rem + env(safe-area-inset-bottom));
-    transform: none;
-    justify-content: center;
+  .control:hover:not(:disabled) {
+    transform: translateY(-2px);
   }
-
-  /* Full-width, thumb-friendly buttons that still feel composed. */
-  .control {
-    flex: 1 1 0;
-    max-width: 15rem;
+  .shutter:hover {
+    box-shadow: 0 14px 38px rgba(230, 140, 88, 0.6);
+  }
+  .swatch:hover {
+    transform: scale(1.12);
+  }
+  .swatch--active:hover {
+    transform: scale(1.18);
   }
 }
 
-/* ── Respect users who prefer reduced motion (accessibility) ───────────────── */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
