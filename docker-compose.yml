@@ -1,0 +1,35 @@
+# Zuri Virtual Mirror — local orchestration.
+#
+#   docker compose up dev   → Vite dev server, HMR, volume-mounted source
+#   docker compose up web   → production build served by Nginx
+#
+# `dev` is the day-to-day coding target: edit on the host, the container reloads.
+services:
+  dev:
+    image: node:20-alpine
+    working_dir: /app
+    command: sh -c "corepack enable && corepack prepare pnpm@9.12.0 --activate && pnpm install --prod=false && node scripts/copy-mediapipe.mjs && pnpm dev"
+    ports:
+      - "5173:5173"
+    volumes:
+      # Bind-mount the source for instant live reload…
+      - ./:/app
+      # …but keep node_modules inside the container (named volume) so host
+      # platform differences never poison the Linux install.
+      - zuri_node_modules:/app/node_modules
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - VITE_HMR_HOST=localhost
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+
+volumes:
+  zuri_node_modules:

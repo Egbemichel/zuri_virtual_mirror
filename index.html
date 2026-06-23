@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#1a1614" />
+    <title>Zuri — Virtual Mirror</title>
+
+    <!--
+      Typography. The brand faces (Rische / IsidoraSans) are licensed and live
+      under /public/fonts. Plus Jakarta Sans is pulled from Google Fonts as the
+      web-safe fallback so the UI renders gracefully before brand fonts load.
+    -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <!--
+      ── MediaPipe Face Mesh via global CDN script tags ──
+      Loading the legacy MediaPipe bundle through <script> tags (instead of an
+      npm import) sidesteps Vite's CommonJS interop entirely. The library then
+      lives on `window` as global constructors (FaceMesh, Camera, drawing utils),
+      which FaceMeshTracker.ts reads directly. We still ship the WASM/data
+      binaries locally under /public/mediapipe for deterministic, offline-capable
+      asset delivery (configured via `locateFile`).
+    -->
+    <script
+      src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3/camera_utils.js"
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4/face_mesh.js"
+      crossorigin="anonymous"
+    ></script>
+  </head>
+
+  <body>
+    <div id="app">
+      <!-- ── Camera stage: video feed + WebGL overlay, perfectly stacked ── -->
+      <section class="stage" id="stage" data-mode="preview">
+        <video id="input_video" playsinline autoplay muted></video>
+        <canvas id="output_canvas"></canvas>
+
+        <div class="stage__status" id="status">
+          <span class="stage__dot"></span>
+          <span id="status_text">Initialising mirror…</span>
+        </div>
+
+        <!-- Capture / Retake / Download — populated by App.ts per mode. -->
+        <div class="stage__controls" id="controls"></div>
+
+        <div class="stage__vignette" aria-hidden="true"></div>
+      </section>
+
+      <!-- ── Quiet-luxury control panel (rendered by ComboPicker.ts) ── -->
+      <aside class="panel" id="panel"></aside>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

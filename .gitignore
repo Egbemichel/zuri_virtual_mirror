@@ -1,0 +1,8 @@
+node_modules
+dist
+*.local
+.DS_Store
+*.log
+
+# Vendored MediaPipe WASM is copied from node_modules at install time.
+public/mediapipe/

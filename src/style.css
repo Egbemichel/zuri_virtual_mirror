@@ -1,0 +1,481 @@
+/* ───────────────────────────────────────────────────────────────────────────
+   Zuri Virtual Mirror — "Quiet Luxury" design system.
+   Spacious grid, generous padding, restrained palette, elegant type.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* ── Brand typefaces (licensed, served from /public/fonts) ─────────────────── */
+@font-face {
+  font-family: 'Rische';
+  src: url('/fonts/Rische-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Rische';
+  src: url('/fonts/Rische-Light.woff2') format('woff2');
+  font-weight: 300;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'IsidoraSans';
+  src: url('/fonts/IsidoraSans-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+}
+
+:root {
+  /* Brand accents */
+  --accent-coral: #f9ad99;
+  --accent-amber: #e68c58;
+
+  /* Quiet-luxury neutrals */
+  --ink: #1a1614;
+  --ink-soft: #2a2421;
+  --bone: #f6f1ec;
+  --bone-dim: #cdbfb3;
+  --line: rgba(246, 241, 236, 0.12);
+
+  /* Type stacks (brand face → web-safe fallback) */
+  --font-display: 'Rische', 'Plus Jakarta Sans', serif;
+  --font-ui: 'IsidoraSans', 'Plus Jakarta Sans', system-ui, sans-serif;
+
+  /* Rhythm */
+  --space: clamp(1.5rem, 3vw, 3rem);
+  --radius: 22px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-ui);
+  color: var(--bone);
+  background:
+    radial-gradient(120% 120% at 80% 0%, #2a2018 0%, var(--ink) 55%) fixed;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow: hidden;
+}
+
+/* ── App shell: spacious two-column grid (mirror | panel) ──────────────────── */
+#app {
+  height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(380px, 0.6fr);
+  gap: var(--space);
+  padding: var(--space);
+}
+
+/* ── Camera stage ──────────────────────────────────────────────────────────── */
+.stage {
+  position: relative;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: #000;
+  box-shadow:
+    0 40px 120px rgba(0, 0, 0, 0.55),
+    inset 0 0 0 1px var(--line);
+}
+
+.stage video,
+.stage canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: opacity 0.4s ease;
+}
+
+/* Mirror the live preview like a real looking-glass. The captured still is
+   mirrored to match, so the rendered result needs no extra flip. */
+.stage video {
+  transform: scaleX(-1);
+}
+
+.stage canvas {
+  pointer-events: none;
+  opacity: 0; /* transparent in preview so the live feed shows through */
+}
+
+/* Mode switching: live feed while framing, rendered result after capture. */
+.stage[data-mode='result'] canvas {
+  opacity: 1;
+}
+.stage[data-mode='result'] video {
+  opacity: 0;
+}
+.stage[data-mode='processing'] video {
+  opacity: 0.45;
+  filter: blur(2px);
+}
+
+.stage__vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    120% 100% at 50% 50%,
+    transparent 55%,
+    rgba(0, 0, 0, 0.45) 100%
+  );
+}
+
+.stage__status {
+  position: absolute;
+  left: 1.5rem;
+  bottom: 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.7rem 1.2rem;
+  font-size: 0.85rem;
+  letter-spacing: 0.02em;
+  color: var(--bone);
+  background: rgba(20, 16, 14, 0.6);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+
+.stage__dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--bone-dim);
+  transition: background 0.3s ease, box-shadow 0.3s ease;
+}
+
+.stage__status--live .stage__dot {
+  background: #6ee7a0;
+  box-shadow: 0 0 0 4px rgba(110, 231, 160, 0.2);
+}
+
+.stage__status--error {
+  border-color: rgba(230, 140, 88, 0.5);
+}
+
+/* ── Capture / Retake / Download controls ──────────────────────────────────── */
+.stage__controls {
+  position: absolute;
+  left: 50%;
+  bottom: 1.75rem;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 1rem;
+  z-index: 2;
+}
+
+.control {
+  font-family: var(--font-ui);
+  font-size: 0.92rem;
+  letter-spacing: 0.04em;
+  padding: 0.95rem 2.1rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  cursor: pointer;
+  color: var(--bone);
+  background: rgba(20, 16, 14, 0.55);
+  backdrop-filter: blur(14px);
+  transition: transform 0.2s ease, background 0.25s ease, opacity 0.25s ease;
+}
+
+.control:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+.control:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.control--primary {
+  border: none;
+  color: var(--ink);
+  font-weight: 600;
+  background: linear-gradient(120deg, var(--accent-amber), var(--accent-coral));
+  box-shadow: 0 14px 36px rgba(230, 140, 88, 0.35);
+}
+
+.control--ghost {
+  background: rgba(20, 16, 14, 0.6);
+}
+
+.control--capture {
+  padding-left: 2.6rem;
+  padding-right: 2.6rem;
+}
+
+/* ── Control panel ─────────────────────────────────────────────────────────── */
+.panel {
+  height: 100%;
+  overflow-y: auto;
+  padding: clamp(1.5rem, 2.5vw, 2.75rem);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(1.75rem, 3vw, 2.75rem);
+  background: rgba(26, 22, 20, 0.55);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  scrollbar-width: thin;
+  scrollbar-color: var(--bone-dim) transparent;
+}
+
+.panel__eyebrow {
+  font-size: 0.72rem;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--accent-coral);
+  margin-bottom: 0.9rem;
+}
+
+.panel__title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(2.4rem, 4vw, 3.4rem);
+  line-height: 1.02;
+  letter-spacing: -0.01em;
+}
+
+.panel__subtitle {
+  margin-top: 1rem;
+  max-width: 38ch;
+  color: var(--bone-dim);
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.panel__section-title {
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-size: 1.15rem;
+  letter-spacing: 0.04em;
+  color: var(--bone);
+  margin-bottom: 1.4rem;
+  padding-bottom: 0.8rem;
+  border-bottom: 1px solid var(--line);
+}
+
+/* ── Combo grid: spacious, web-adapted (not compressed mobile cards) ───────── */
+.combo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: clamp(1.1rem, 2vw, 1.75rem);
+}
+
+.combo-card {
+  display: flex;
+  align-items: center;
+  gap: 1.1rem;
+  padding: 1.15rem 1.25rem;
+  background: rgba(246, 241, 236, 0.03);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+  transition: transform 0.25s ease, border-color 0.25s ease, background 0.25s ease;
+}
+
+.combo-card:hover {
+  transform: translateY(-3px);
+  background: rgba(246, 241, 236, 0.06);
+  border-color: rgba(249, 173, 153, 0.35);
+}
+
+.combo-card--active {
+  border-color: var(--accent-coral);
+  background: rgba(249, 173, 153, 0.08);
+}
+
+.combo-card__swatch {
+  flex: 0 0 auto;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 2px solid;
+  transition: transform 0.25s ease;
+}
+
+.combo-card:hover .combo-card__swatch {
+  transform: scale(1.06);
+}
+
+.combo-card__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.combo-card__name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.02rem;
+  letter-spacing: 0.01em;
+}
+
+.combo-card__tagline {
+  font-size: 0.8rem;
+  color: var(--bone-dim);
+  line-height: 1.35;
+}
+
+/* ── Custom shade studio ───────────────────────────────────────────────────── */
+.custom-studio {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.1rem 1.25rem;
+  padding: 1.4rem 1.5rem;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(246, 241, 236, 0.03);
+}
+
+.custom-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.custom-field--wide {
+  grid-column: 1 / -1;
+}
+
+.custom-field label {
+  font-size: 0.72rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--bone-dim);
+}
+
+.custom-field input[type='color'] {
+  width: 100%;
+  height: 46px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.custom-field input[type='range'] {
+  width: 100%;
+  accent-color: var(--accent-coral);
+  cursor: pointer;
+}
+
+.custom-add {
+  grid-column: 1 / -1;
+  margin-top: 0.3rem;
+  font-family: var(--font-ui);
+  font-size: 0.9rem;
+  letter-spacing: 0.03em;
+  padding: 0.85rem 1.5rem;
+  border-radius: 999px;
+  border: 1px solid rgba(249, 173, 153, 0.4);
+  background: rgba(249, 173, 153, 0.08);
+  color: var(--bone);
+  cursor: pointer;
+  transition: background 0.25s ease, transform 0.2s ease;
+}
+
+.custom-add:hover {
+  transform: translateY(-2px);
+  background: rgba(249, 173, 153, 0.16);
+}
+
+/* ── Clear Gloss switch ────────────────────────────────────────────────────── */
+.gloss-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 1.4rem 1.5rem;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: linear-gradient(
+    120deg,
+    rgba(230, 140, 88, 0.08),
+    rgba(249, 173, 153, 0.04)
+  );
+}
+
+.gloss-toggle__label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.gloss-toggle__name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.gloss-toggle__hint {
+  font-size: 0.8rem;
+  color: var(--bone-dim);
+}
+
+.switch {
+  flex: 0 0 auto;
+  width: 60px;
+  height: 32px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  position: relative;
+  transition: background 0.3s ease;
+}
+
+.switch__thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--bone);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.switch--on {
+  background: linear-gradient(120deg, var(--accent-amber), var(--accent-coral));
+}
+
+.switch--on .switch__thumb {
+  transform: translateX(28px);
+}
+
+.panel__footer {
+  margin-top: auto;
+  padding-top: 1.5rem;
+  font-size: 0.75rem;
+  color: var(--bone-dim);
+  border-top: 1px solid var(--line);
+}
+
+/* ── Responsive: stack the mirror over the panel on narrow viewports ───────── */
+@media (max-width: 940px) {
+  #app {
+    grid-template-columns: 1fr;
+    grid-template-rows: 50vh 1fr;
+    height: auto;
+    min-height: 100vh;
+    overflow-y: auto;
+  }
+  body {
+    overflow: auto;
+  }
+}

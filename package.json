@@ -1,0 +1,23 @@
+{
+  "name": "zuri-virtual-mirror",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Zuri Virtual Mirror — high-fidelity WebAR lip try-on with custom WebGL2 shaders.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host",
+    "postinstall": "node scripts/copy-mediapipe.mjs"
+  },
+  "dependencies": {
+    "three": "^0.169.0"
+  },
+  "devDependencies": {
+    "@mediapipe/face_mesh": "^0.4.1633559619",
+    "@types/three": "^0.169.0",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.10",
+    "@vitejs/plugin-basic-ssl": "^1.2.0"
+  }
+}
