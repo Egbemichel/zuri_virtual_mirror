@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { LipGeometry } from './LipGeometry';
 import { createLipMaterial, type LipUniforms } from './LipShader';
-import { PostProcessor } from './PostProcessor';
 import type { LandmarkFrame } from './FaceMeshTracker';
 import type { LipCombo } from './data/combos';
 
@@ -32,9 +31,6 @@ export class SceneManager {
   private readonly bgMaterial: THREE.MeshBasicMaterial;
   private readonly bgMesh: THREE.Mesh;
   private photoTexture: THREE.CanvasTexture | null = null;
-
-  private readonly post = new PostProcessor();
-  private graded = false; // apply the editorial grade only once a photo exists
 
   constructor(canvas: HTMLCanvasElement) {
     this.renderer = new THREE.WebGLRenderer({
@@ -103,9 +99,7 @@ export class SceneManager {
     this.uniforms.uVideo.value = tex;
 
     this.renderer.setSize(canvas.width, canvas.height, false);
-    this.post.setSize(this.renderer);
     this.bgMesh.visible = true;
-    this.graded = true;
     this.render();
   }
 
@@ -120,7 +114,6 @@ export class SceneManager {
   clear(): void {
     this.lipMesh.visible = false;
     this.bgMesh.visible = false;
-    this.graded = false;
     this.render();
   }
 
@@ -139,22 +132,16 @@ export class SceneManager {
 
   dispose(): void {
     window.removeEventListener('resize', this.render);
-    this.post.dispose();
     this.renderer.dispose();
   }
 
   // ── Internals ──────────────────────────────────────────────────────────────
 
   private render = (): void => {
-    if (this.graded) {
-      // Scene (photo + lips) → offscreen target, then the editorial grade → screen.
-      this.renderer.setRenderTarget(this.post.sceneTarget);
-      this.renderer.render(this.scene, this.camera);
-      this.post.render(this.renderer);
-    } else {
-      this.renderer.setRenderTarget(null);
-      this.renderer.render(this.scene, this.camera);
-    }
+    // Direct render: the captured photo + lip composite, with NO post-processing
+    // grade (removed — it was degrading the image, not enhancing it).
+    this.renderer.setRenderTarget(null);
+    this.renderer.render(this.scene, this.camera);
   };
 
   private createDummyTexture(): THREE.DataTexture {
