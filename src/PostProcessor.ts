@@ -60,47 +60,60 @@ const COMPOSITE_FRAG = /* glsl */ `
   varying vec2 vUv;
   uniform sampler2D tScene;
   uniform sampler2D tGlow;
-  uniform float uBloom;      // highlights-only bloom strength
-  uniform float uWarmth;     // warm grade amount
-  uniform float uContrast;   // filmic S amount
+  uniform float uBloom;      // highlights-only bloom strength (gentle)
+  uniform float uKey;        // directional studio key-light strength
+  uniform float uExposure;   // pre-tonemap exposure
+  uniform float uWarmth;     // warm split-tone amount
   uniform float uSaturation; // colour richness
   uniform float uVignette;
   uniform float uGrain;
   uniform float uSeed;
 
-  float luma(vec3 c) { return dot(c, vec3(0.299, 0.587, 0.114)); }
+  float luma(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
 
   float hash(vec2 p) {
     return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+  }
+
+  // ACES filmic tone mapping (Narkowicz fit) — smooth highlight rolloff so
+  // bright areas stay rich and creamy instead of clipping to flat white.
+  vec3 aces(vec3 x) {
+    const float a = 2.51, b = 0.03, c = 2.43, d = 0.59, e = 0.14;
+    return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
   }
 
   void main() {
     vec3 col = texture2D(tScene, vUv).rgb;
     vec3 glow = texture2D(tGlow, vUv).rgb;
 
-    // 1. Filmic S-curve — add CONTRAST and snap (the opposite of haze).
-    vec3 s = col * col * (3.0 - 2.0 * col);
-    col = mix(col, s, uContrast);
-
-    // 2. Colour richness — boost saturation toward a clean, expensive palette.
-    float l0 = luma(col);
-    col = mix(vec3(l0), col, uSaturation);
-
-    // 3. Warm split-tone: warm highlights, gently cool shadows.
-    float l = luma(col);
-    vec3 warmHi = vec3(1.05, 1.0, 0.93);
-    vec3 coolLo = vec3(0.98, 1.0, 1.03);
-    vec3 split = mix(coolLo, warmHi, smoothstep(0.2, 0.85, l));
-    col *= mix(vec3(1.0), split, uWarmth);
-
-    // 4. Highlights-only bloom — adds sparkle to bright spots, NOT a full haze.
+    // 1. Gentle highlights-only bloom (sheen on real speculars, not a wash).
     col += glow * uBloom;
 
-    // 5. Soft vignette to focus the portrait.
-    float d = distance(vUv, vec2(0.5));
-    col *= 1.0 - uVignette * smoothstep(0.45, 0.95, d);
+    // 2. Directional studio key light: dodge toward an off-centre point and
+    //    fall off with distance, giving the portrait a clear light DIRECTION
+    //    and dimensionality (a soft beauty-dish, not flat ambient light).
+    vec2 lightPos = vec2(0.5, 0.36);
+    float key = 1.0 - smoothstep(0.12, 1.05, distance(vUv, lightPos));
+    col *= 1.0 + uKey * (key - 0.45);
 
-    // 6. Fine film grain.
+    // 3. Pre-expose, then ACES filmic tone-map → premium highlight rolloff
+    //    (the core fix for "brights too bright / looks cheap").
+    col = aces(col * uExposure);
+
+    // 4. Warm split-tone: warm highlights, faintly cool shadows (editorial).
+    float l = luma(col);
+    vec3 warmHi = vec3(1.05, 1.005, 0.95);
+    vec3 coolLo = vec3(0.98, 1.0, 1.03);
+    col *= mix(vec3(1.0), mix(coolLo, warmHi, smoothstep(0.2, 0.85, l)), uWarmth);
+
+    // 5. Colour richness.
+    col = mix(vec3(luma(col)), col, uSaturation);
+
+    // 6. Soft vignette — works WITH the key light to sculpt depth.
+    float d = distance(vUv, vec2(0.5, 0.52));
+    col *= 1.0 - uVignette * smoothstep(0.42, 1.0, d);
+
+    // 7. Fine film grain.
     col += (hash(vUv * uSeed) - 0.5) * uGrain;
 
     gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
@@ -150,12 +163,13 @@ export class PostProcessor {
       uniforms: {
         tScene: { value: null },
         tGlow: { value: null },
-        uBloom: { value: 0.35 },
-        uWarmth: { value: 0.6 },
-        uContrast: { value: 0.4 },
-        uSaturation: { value: 1.12 },
-        uVignette: { value: 0.28 },
-        uGrain: { value: 0.03 },
+        uBloom: { value: 0.14 },
+        uKey: { value: 0.22 },
+        uExposure: { value: 1.3 },
+        uWarmth: { value: 0.55 },
+        uSaturation: { value: 1.1 },
+        uVignette: { value: 0.34 },
+        uGrain: { value: 0.025 },
         uSeed: { value: 1.0 },
       },
       depthTest: false,
@@ -195,7 +209,7 @@ export class PostProcessor {
     this.blit(renderer, this.blurMat, this.rtA, {
       tDiffuse: this.rtScene.texture,
       uDir: new THREE.Vector2(spread / hw, 0),
-      uThreshold: 0.72,
+      uThreshold: 0.82,
     });
     // Vertical blur: rtA → rtB (already bright-passed).
     this.blit(renderer, this.blurMat, this.rtB, {
