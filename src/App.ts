@@ -1,6 +1,7 @@
 import { CameraPreview } from './CameraPreview';
 import { FaceMeshDetector } from './FaceMeshTracker';
 import { SceneManager } from './SceneManager';
+import { LightingMeter, type LightQuality } from './LightingMeter';
 import { ComboPicker } from './components/ComboPicker';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -25,9 +26,11 @@ export class App {
   private readonly preview: CameraPreview;
   private readonly detector: FaceMeshDetector;
   private readonly picker: ComboPicker;
+  private readonly meter = new LightingMeter();
 
   private mode: Mode = 'preview';
   private ready = false;
+  private lightingTimer: number | null = null;
 
   constructor() {
     this.video = mustGet<HTMLVideoElement>('#input_video');
@@ -56,8 +59,7 @@ export class App {
       // Camera and model load in parallel for a fast cold start.
       await Promise.all([this.preview.start(), this.detector.init()]);
       this.ready = true;
-      this.setStatus('Frame your shot, then capture.');
-      this.renderControls();
+      this.setMode('preview'); // re-enter preview to enable the lighting coach
     } catch (err) {
       const message =
         err instanceof Error ? err.message : 'Unknown camera/model error.';
@@ -117,6 +119,43 @@ export class App {
     this.stageEl.dataset.mode = mode;
     this.statusEl.classList.toggle('stage__status--live', mode === 'result');
     this.renderControls();
+
+    // The lighting coach runs only while framing a shot.
+    this.stopLightingAdvisor();
+    if (mode === 'preview' && this.ready) {
+      this.startLightingAdvisor();
+    } else {
+      delete this.statusEl.dataset.light;
+    }
+  }
+
+  // ── Real-time lighting coach ───────────────────────────────────────────────
+
+  private startLightingAdvisor(): void {
+    const tick = () => {
+      const { quality } = this.meter.sample(this.video);
+      this.applyLightingAdvice(quality);
+    };
+    tick();
+    this.lightingTimer = window.setInterval(tick, 700);
+  }
+
+  private stopLightingAdvisor(): void {
+    if (this.lightingTimer !== null) {
+      window.clearInterval(this.lightingTimer);
+      this.lightingTimer = null;
+    }
+  }
+
+  private applyLightingAdvice(quality: LightQuality): void {
+    const advice: Record<LightQuality, string> = {
+      dark: 'Quite dark — face a window or lamp for the signature glow.',
+      dim: 'A touch more light will glow beautifully — or capture, we’ll enhance it.',
+      harsh: 'Very bright spot — soften it or turn slightly for an even glow.',
+      good: 'Beautiful, even light. Capture when you’re ready.',
+    };
+    this.statusEl.dataset.light = quality;
+    this.setStatus(advice[quality]);
   }
 
   private renderControls(): void {

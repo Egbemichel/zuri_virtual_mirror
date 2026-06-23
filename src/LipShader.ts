@@ -53,15 +53,9 @@ uniform float uGloss;       // wet-sheen strength
 
 out vec4 pc_fragColor;
 
-float luma(vec3 c) { return dot(c, vec3(0.299, 0.587, 0.114)); }
+const float PI = 3.141592653589793;
 
-// Per-channel overlay blend (multiply darks, screen lights) — the classic
-// detail-preserving recolour operator.
-vec3 overlay(vec3 base, vec3 blend) {
-  vec3 mult = 2.0 * base * blend;
-  vec3 scr = 1.0 - 2.0 * (1.0 - base) * (1.0 - blend);
-  return mix(mult, scr, step(0.5, base));
-}
+float luma(vec3 c) { return dot(c, vec3(0.299, 0.587, 0.114)); }
 
 void main() {
   vec3 lip = texture(uVideo, vScreenUv).rgb;
@@ -75,25 +69,41 @@ void main() {
   float outer = 1.0 - smoothstep(0.0, 0.32, vUv.y);
   vec3 pigment = mix(uColor, uLinerColor, outer * 0.35);
 
-  // ── Luminance-preserving recolour ───────────────────────────────────────
-  // Overlay keeps the lip's own form; a colour floor guarantees the shade
-  // shows even where the lip is very dark (poor lighting).
-  vec3 tinted = overlay(lip, pigment);
-  tinted = mix(tinted, pigment * (0.45 + Lb), 0.35);
-  tinted = max(tinted, pigment * Lb * 0.7);
+  // ── Hue-preserving recolour ─────────────────────────────────────────────
+  // Scale the chosen pigment by the lip's OWN relative brightness. This keeps
+  // the shade's hue everywhere (it can never screen toward white) while the
+  // lip's natural light→dark structure rides along, so texture survives.
+  float shade = clamp(Lb * 2.05, 0.28, 1.4);
+  vec3 colored = pigment * shade;
 
-  vec3 color = mix(lip, tinted, clamp(uOpacity, 0.0, 1.0));
+  vec3 color = mix(lip, colored, clamp(uOpacity, 0.0, 1.0));
 
-  // ── Wet gloss ───────────────────────────────────────────────────────────
-  // Amplify the lips' own brightest pixels into a blown-out specular sheen,
-  // plus a soft moist sheen proportional to brightness so it always looks wet.
-  float spec = pow(smoothstep(0.55, 0.95, L), 1.4) * uGloss;
-  float sheen = smoothstep(0.30, 0.85, Lb) * uGloss * 0.35;
-  color += vec3(spec + sheen);
+  // ── Dimensional form: the gloss wraps the lip body ──────────────────────
+  // Derive a cheap lip-surface model from UV: a central pout bulge (across the
+  // lip), and the mouth corners (along the lip). Use it for ambient occlusion
+  // in the grooves/corners and to seat the wet highlight on the raised flesh.
+  float bulge = sin(vUv.y * PI);                       // 1 mid-lip, 0 at edges
+  float corner = smoothstep(0.0, 0.16, vUv.x) *
+                 smoothstep(0.0, 0.16, 1.0 - vUv.x);   // 0 at commissures
 
-  // ── Feather into the skin ───────────────────────────────────────────────
+  // Ambient occlusion — deepen the grooves, the mouth line and the corners so
+  // the lip reads as a rounded 3D body rather than a flat decal.
+  float ao = mix(0.72, 1.0, bulge) * mix(0.66, 1.0, corner);
+  color *= ao;
+
+  // ── Wet gloss, seated on the form ───────────────────────────────────────
+  // A restrained specular: a tight hot-spot from the lips' own real highlights
+  // plus a small synthetic one on the pout. Kept low so it reads as wet, never
+  // a white wash.
+  float photoSpec = pow(smoothstep(0.66, 0.97, L), 2.2);
+  float formSpec = pow(bulge, 2.6) * smoothstep(0.28, 0.6, Lb);
+  float spec = (photoSpec * 0.55 + formSpec * 0.35) * uGloss * corner;
+  color += vec3(spec);
+
+  // ── Feather into the skin (tighter, with corner taper) ──────────────────
   float feather =
-    smoothstep(0.0, 0.13, vUv.y) * smoothstep(0.0, 0.13, 1.0 - vUv.y);
+    smoothstep(0.0, 0.10, vUv.y) * smoothstep(0.0, 0.10, 1.0 - vUv.y) *
+    smoothstep(0.0, 0.05, vUv.x) * smoothstep(0.0, 0.05, 1.0 - vUv.x);
 
   pc_fragColor = vec4(color, feather);
 }
@@ -115,8 +125,8 @@ export function createLipMaterial(
     uVideo: { value: videoTexture },
     uColor: { value: new THREE.Color('#f9ad99') },
     uLinerColor: { value: new THREE.Color('#c25b44') },
-    uOpacity: { value: 0.8 },
-    uGloss: { value: 0.9 },
+    uOpacity: { value: 0.82 },
+    uGloss: { value: 0.4 },
   };
 
   return new THREE.RawShaderMaterial({

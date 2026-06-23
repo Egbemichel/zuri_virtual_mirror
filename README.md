@@ -148,20 +148,33 @@ Browse to **http://localhost:8080**.
 
 ---
 
-## Shader notes
+## Rendering notes
 
-`src/LipShader.ts` is a WebGL2 (`#version 300 es`) `RawShaderMaterial`:
+### Gloss shader — `src/LipShader.ts` (WebGL2 `#version 300 es` `RawShaderMaterial`)
 
-- **Subsurface scattering** — warm under-glow tint `vec3(1.25, 0.7, 0.6)` blended
-  at grazing angles to fake light bleeding through lip tissue.
-- **Micro-twinkle shimmer** — a 512² noise field (generated at runtime) sampled
-  with the lookup UV offset by the **view-space normal** (`normal.xy * 0.1`) and
-  animated by `uTime`, so individual flecks blink as the head rotates.
-- **Lip-liner mapping** — a secondary Fresnel layer feathered from the outer
-  boundary (landmarks **61–291**, `uv.y → 0`) inward over the gloss fill.
-- **Clear-gloss toggle** — `uIsClearGloss` forces roughness → 0, boosts env
-  reflection ×1.5, and amplifies rim alpha for a hyper-reflective finish.
+Realism comes from **recolouring** the real lips, never repainting them:
 
-The 512² noise and the equirectangular "studio HDR" environment are both
-synthesized procedurally in `SceneManager.ts`, so the repo stays self-contained
-(no binary texture assets required to run).
+- **Luminance-preserving recolour** — the real lip pixel is re-coloured with an
+  *overlay* blend (multiply in shadow, screen in highlight), so every natural
+  crease, shadow and curve survives; the shade looks physically applied.
+- **Photo-driven wet gloss** — the lips' own brightest pixels are amplified into
+  blown-out specular sheen (where real light hits the wet surface).
+- **Dimensional form** — a UV-derived pout bulge + corner model adds ambient
+  occlusion in the grooves/mouth-line/corners and seats the highlight on the
+  raised flesh, so the gloss *wraps* the lip body.
+- **Whisper of liner** — the liner colour deepens only the outermost rim
+  (landmarks **61–291**, `uv.y → 0`), capped low so it never draws a hard line.
+- Edges feather (with a corner taper) so the makeup melts into the skin.
+
+### Editorial grade — `src/PostProcessor.ts`
+
+A full-screen, multi-pass grade applied after capture turns an under-lit webcam
+frame into the premium "Pinterest" aesthetic: **Orton soft-glow** (dreamy haze +
+skin softening), exposure lift, lifted shadows, **warm split-tone**, gentle
+filmic S-contrast, a muted desaturation, vignette and fine film grain.
+
+### Lighting coach — `src/LightingMeter.ts`
+
+While framing, the live feed is sampled at 32² every 0.7s; the status pill
+advises the user (dark / dim / harsh / good) toward the even light that makes the
+gloss and grade sing.

@@ -1,0 +1,20 @@
+# Automated dependency & GitHub Actions updates (supply-chain hygiene).
+# Dependabot opens PRs that flow through the same CI/DevSecOps gates above.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    groups:
+      # Batch low-risk patch/minor bumps into one PR to cut noise.
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly

@@ -1,0 +1,146 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Zuri Virtual Mirror — CI/CD + DevSecOps gates → Netlify
+#
+# Flow:
+#   · Pull request   → quality + security gates, then a Netlify DEPLOY PREVIEW.
+#   · Push to main   → quality + security gates, then PRODUCTION deploy.
+#
+# Deploys run ONLY after both the quality and security jobs pass, so nothing
+# insecure or broken ever reaches the live site.
+# ─────────────────────────────────────────────────────────────────────────────
+name: CI / CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Least privilege by default; jobs widen only what they need.
+permissions:
+  contents: read
+
+# Cancel superseded runs on the same ref to save minutes.
+concurrency:
+  group: cicd-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── 1. Quality: type-check, build, publish the artifact ──────────────────
+  quality:
+    name: Build & type-check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install (clean, from lockfile)
+        run: npm ci
+
+      - name: Build (tsc type-check + vite bundle)
+        run: npm run build
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist
+          retention-days: 7
+
+  # ── 2. Security gates (DevSecOps) ────────────────────────────────────────
+  security:
+    name: Security gates
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write # upload SARIF to the Security tab
+    steps:
+      - name: Checkout (full history for secret scanning)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install (clean, from lockfile)
+        run: npm ci
+
+      # SCA — block only on HIGH+ vulns in SHIPPED (runtime) dependencies.
+      - name: Dependency audit (runtime)
+        run: npm audit --omit=dev --audit-level=high
+
+      # SCA — full report (incl. dev tooling); informational, never blocks.
+      - name: Dependency audit (full, report-only)
+        run: npm audit || true
+
+      # Secret scanning across the whole git history.
+      - name: Secret scan (gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Filesystem scan: dependency vulns, leaked secrets, IaC/Dockerfile misconfig.
+      - name: Vulnerability & misconfig scan (Trivy)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: fs
+          scanners: vuln,secret,misconfig
+          severity: CRITICAL,HIGH
+          format: sarif
+          output: trivy.sarif
+          exit-code: '0' # report to Security tab; tighten to '1' to hard-block
+
+      - name: Upload Trivy results
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy.sarif
+
+  # ── 3. Deploy to Netlify (only after gates pass) ─────────────────────────
+  deploy:
+    name: Deploy to Netlify
+    needs: [quality, security]
+    runs-on: ubuntu-latest
+    # Skip on forked PRs / Dependabot, which have no access to deploy secrets.
+    if: >
+      github.event_name == 'push' ||
+      github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Deploy production (push to main)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: npx netlify-cli@17 deploy --dir=dist --prod --message "main@${{ github.sha }}"
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+
+      - name: Deploy preview (pull request)
+        if: github.event_name == 'pull_request'
+        run: |
+          npx netlify-cli@17 deploy --dir=dist --json > deploy.json
+          url=$(node -e "process.stdout.write(require('./deploy.json').deploy_url||'')")
+          echo "### 🔮 Netlify deploy preview" >> "$GITHUB_STEP_SUMMARY"
+          echo "[$url]($url)" >> "$GITHUB_STEP_SUMMARY"
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}

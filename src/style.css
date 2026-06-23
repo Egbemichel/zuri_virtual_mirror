@@ -154,9 +154,21 @@ body {
   transition: background 0.3s ease, box-shadow 0.3s ease;
 }
 
-.stage__status--live .stage__dot {
+.stage__status--live .stage__dot,
+.stage__status[data-light='good'] .stage__dot {
   background: #6ee7a0;
   box-shadow: 0 0 0 4px rgba(110, 231, 160, 0.2);
+}
+
+.stage__status[data-light='dim'] .stage__dot,
+.stage__status[data-light='harsh'] .stage__dot {
+  background: var(--accent-amber);
+  box-shadow: 0 0 0 4px rgba(230, 140, 88, 0.22);
+}
+
+.stage__status[data-light='dark'] .stage__dot {
+  background: #e0664a;
+  box-shadow: 0 0 0 4px rgba(224, 102, 74, 0.22);
 }
 
 .stage__status--error {

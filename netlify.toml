@@ -1,0 +1,19 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Netlify configuration for Zuri Virtual Mirror (static Vite SPA).
+#
+# In the GitHub Actions flow, the pipeline builds and deploys the prebuilt
+# `dist/` via the Netlify CLI — so headers and redirects live in
+# `public/_headers` and `public/_redirects` (copied into `dist` by Vite) to
+# guarantee they ship WITH the artifact. The [build] block below is only used if
+# you ever let Netlify build natively from Git instead.
+# ─────────────────────────────────────────────────────────────────────────────
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+  # Ensure devDependencies (vite, typescript, three, @mediapipe/face_mesh) and
+  # the WASM-copy postinstall run in a native Netlify build.
+  NPM_FLAGS = "--include=dev"

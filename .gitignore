@@ -6,3 +6,6 @@ dist
 
 # Vendored MediaPipe WASM is copied from node_modules at install time.
 public/mediapipe/
+
+# Local Netlify folder
+.netlify
